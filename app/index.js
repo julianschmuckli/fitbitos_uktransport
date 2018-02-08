@@ -2,14 +2,11 @@ import document from "document";
 import * as messaging from "messaging";
 import { vibration } from "haptics";
 import { geolocation } from "geolocation";
-//import { locale } from "user-settings";
 
 console.log("App Started");
 
 var message_received = false;
 var displayInMinutes = false;
-/*var locale = locale.language;
-console.log(locale);*/
 
 var index = 1;
 var GPSoptions = {
@@ -45,7 +42,7 @@ let time_four__destination = document.getElementById("time_four-destination");
 let time_four__platform = document.getElementById("time_four-platform");
 let time_four__time = document.getElementById("time_four-time");
 
-name.text = "Lädt...";
+name.text = "Loading...";
 scrollview.height = 150;
 
 messaging.peerSocket.onopen = function() {
@@ -216,19 +213,12 @@ messaging.peerSocket.onmessage = function(evt) {
   }
 }
 
-setInterval(function(){
+setTimeout(function(){
   if(!message_received){
-    /*switch(locale){
-      case 'en':
-        name.text = "No connection";
-        stationboard.text = "It seems that you don't have a connection to your phone.";
-        break;
-      case 'de':*/
-        name.text = "No connection";
-        stationboard.text = "It seems that you don't have a connection to your phone. Please try again.";
-       /* break;
-    }*/
+    name.text = "No connection";
+    stationboard.text = "It seems that you don't have a connection to your phone. Please try again.";
     scrollview.height = 150;
+    vibration.start("nudge-max");
   }
 }, 10000);
 
