@@ -1,6 +1,7 @@
 .background {
   viewport-fill: black;
 }
+
 #name {
   fill: white;
   font-size: 32;
@@ -10,16 +11,18 @@
   text-length: 99;
   text-overflow: ellipsis;
 }
+
 #stationboard{
   fill: white;
   font-family:System-Regular;
 }
 
 .time{
-  x: 265;
+  x: 225;
   y: 72;
 }
 
 .destination{
-  width: 265;
+  text-length:13;
+  width:230;
 }

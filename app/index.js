@@ -216,7 +216,7 @@ messaging.peerSocket.onmessage = function(evt) {
 setTimeout(function(){
   if(!message_received){
     name.text = "No connection";
-    stationboard.text = "It seems that you don't have a connection to your phone. Please try again.";
+    stationboard.text = "It seems that there's no connection to your phone. Please try again.";
     scrollview.height = 150;
     vibration.start("nudge-max");
   }

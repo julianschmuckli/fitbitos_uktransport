@@ -24,9 +24,14 @@ function getStations(position) {
   latitude = position.coords.latitude;
   longitude = position.coords.longitude;
   
+  //@Test
+  /*var location_chosen = 0;
+  latitude = [53.477706, 51.486233][location_chosen];
+  longitude = [-2.230381, -0.122623][location_chosen];*/
+  
   console.log("Location: "+latitude+", "+longitude);
   var url = "https://transportapi.com/v3/uk/train/stations/near.json?app_id="+app_id+"&app_key="+app_key+"&lat="+ latitude +"&lon="+ longitude;
-  console.log("Loading data from "+url);
+  //console.log("Loading data from "+url);
   fetch(url).then(function (response) {
       response.text()
       .then(function(data) {
@@ -38,7 +43,7 @@ function getStations(position) {
           }
           if(data["stations"][i]["station_code"]!=undefined && searched_index >= index){
             var url2 = "https://transportapi.com/v3/uk/train/station/"+data["stations"][i]["station_code"]+"/live.json?app_id="+app_id+"&app_key="+app_key;
-            console.log(url2);
+            //console.log(url2);
             fetch(url2)
             .then(function (response2) {
                 response2.text()
