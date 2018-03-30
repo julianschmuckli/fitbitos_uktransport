@@ -1,10 +1,13 @@
 import { geolocation } from "geolocation";
 import * as messaging from "messaging";
+import { locale } from "user-settings";
+import { settingsStorage } from "settings";
 
-var app_id = "aa4ed2d2";
-var app_key = "4cde0701d34b9ca263383c2d3f2cc97a";
+import * as variables from "../common/variables.js";
+import * as util from "../common/utils.js";
 
 var index = 1;
+var current_favourite_number = -1;
 
 console.log("App started");
 
@@ -30,8 +33,8 @@ function getStations(position) {
   longitude = [-2.230381, -0.122623][location_chosen];*/
   
   console.log("Location: "+latitude+", "+longitude);
-  var url = "https://transportapi.com/v3/uk/train/stations/near.json?app_id="+app_id+"&app_key="+app_key+"&lat="+ latitude +"&lon="+ longitude;
-  //console.log("Loading data from "+url);
+  var url = variables.getURLStationNames(latitude, longitude);
+  console.log("Loading data from "+url);
   fetch(url).then(function (response) {
       response.text()
       .then(function(data) {
@@ -42,39 +45,7 @@ function getStations(position) {
              searched_index++;
           }
           if(data["stations"][i]["station_code"]!=undefined && searched_index >= index){
-            var url2 = "https://transportapi.com/v3/uk/train/station/"+data["stations"][i]["station_code"]+"/live.json?app_id="+app_id+"&app_key="+app_key;
-            //console.log(url2);
-            fetch(url2)
-            .then(function (response2) {
-                response2.text()
-                .then(function(data2) {
-                  //console.log("Hallo:"+data2);
-                  var data2 = JSON.parse(data2);
-                  var data_response = {
-                    name: data2["station_name"],
-                    to:[],
-                    departures:[],
-                    number:[],
-                    operators:[],
-                    platforms:[],
-                    categories:[]
-                  }
-                  
-                  for(var ia=0;ia<data2["departures"]["all"].length;ia++){
-                    //console.log(ia+": "+data2["stationboard"][ia]["to"]);
-                    data_response.to[ia] = data2["departures"]["all"][ia]["destination_name"];
-                    data_response.departures[ia] = data2["departures"]["all"][ia]["expected_departure_time"];
-                    data_response.number[ia] = data2["departures"]["all"][ia]["operator"];
-                    data_response.operators[ia] = data2["departures"]["all"][ia]["operator"];
-                    data_response.platforms[ia] = data2["departures"]["all"][ia]["platform"];
-                    data_response.categories[ia] = data2["departures"]["all"][ia]["category"];
-                  }
-
-                  sendResponse(data_response);
-                });
-            }).catch(function (err) {
-              console.log("Error fetching data from internet: " + err);
-            });
+            fetchStop(data["stations"][i]["station_code"], data["stations"][i]["name"]);
             break;
           }
         }
@@ -85,10 +56,63 @@ function getStations(position) {
   });
 }
 
+function getFavourite(setting){
+  try{
+    return fetchStop(setting.value, setting.name);
+  }catch(e){
+    console.log("Test:"+e);
+    return null;
+  }
+}
+
+function fetchStop(id, name){
+  var url2 = variables.getURLStationDetails(id);
+  console.log(url2);
+  fetch(url2)
+  .then(function (response2) {
+      response2.text()
+      .then(function(data2) {
+        var data2 = JSON.parse(data2);
+        var data_response = {
+          name: name,
+          to:[],
+          departures:[],
+          number:[],
+          operators:[],
+          platforms:[],
+          categories:[]
+        }
+
+        for(var ia=0;ia<data2["departures"]["all"].length;ia++){
+          //console.log(ia+": "+data2["stationboard"][ia]["to"]);
+          var d = new Date();
+          try{
+            data_response.to[ia] = data2["departures"]["all"][ia]["destination_name"];
+            data_response.departures[ia] = Date.parse(d.getFullYear()+"/"+(d.getMonth()+1)+"/"+d.getDate()+" "+data2["departures"]["all"][ia]["expected_departure_time"])/1000;
+            data_response.number[ia] = data2["departures"]["all"][ia]["operator"];
+            data_response.operators[ia] = data2["departures"]["all"][ia]["operator"];
+            data_response.platforms[ia] = data2["departures"]["all"][ia]["platform"];
+            data_response.categories[ia] = data2["departures"]["all"][ia]["category"];
+          }catch(e){
+
+          }
+        }
+        
+        data_response.settings = {};
+        data_response.settings.minutesFirst = settingsStorage.getItem("minutesFirst");
+
+        sendResponse(data_response);
+      });
+  }).catch(function (err) {
+    console.log("Error fetching data from internet: " + err);
+  });
+}
+
 function sendResponse(response){
   if (messaging.peerSocket.readyState === messaging.peerSocket.OPEN) {
     // Send a command to the device
     console.log("Sending response");
+    console.log(response);
     messaging.peerSocket.send(response);
   } else {
     console.log("Error: Connection is not open");
@@ -97,17 +121,41 @@ function sendResponse(response){
 
 messaging.peerSocket.onopen = function() {
   console.log("Socket open");
-  geolocation.getCurrentPosition(getStations, locationError, GPSoptions);
 }
 
 // Listen for messages from the device
 messaging.peerSocket.onmessage = function(evt) {
-  if(evt.data.key=="changeStationDown"){
+  //Locations
+  if(evt.data.key=="changeStationDown" && evt.data.menu == 1){
     index++;
     geolocation.getCurrentPosition(getStations, locationError, GPSoptions);
-  }else if(evt.data.key=="changeStationUp"){
+  }else if(evt.data.key=="changeStationUp" && evt.data.menu == 1){
     index--;
     geolocation.getCurrentPosition(getStations, locationError, GPSoptions);
+  } else if(evt.data.menu == 1){
+    index = 1;
+    geolocation.getCurrentPosition(getStations, locationError, GPSoptions);
+  }
+  //Favourites
+  else if(evt.data.key=="changeStationDown" && evt.data.menu == 0){
+    try{
+      getFavourite(JSON.parse(settingsStorage.getItem("favourite_2")));
+    }catch(e){
+      
+    }
+  }else if(evt.data.key=="changeStationUp" && evt.data.menu == 0){
+    try{
+      getFavourite(JSON.parse(settingsStorage.getItem("favourite_1")));
+    }catch(e){
+      
+    }
+  }else{
+    index = 1;
+    try{
+      getFavourite(JSON.parse(settingsStorage.getItem("favourite_1")));
+    }catch(e){
+      
+    }
   }
 }
 
@@ -115,4 +163,67 @@ messaging.peerSocket.onmessage = function(evt) {
 messaging.peerSocket.onerror = function(err) {
   // Handle any errors
   console.log("Connection error: " + err.code + " - " + err.message);
+}
+
+/*
+----------------------------------
+--------  Settings  --------------
+----------------------------------
+*/
+
+translate(locale.language, "show_minutes_first","Zeige Minuten zuerst","Show minutes first");
+translate(locale.language, "other_settings","Andere Einstellungen","Other settings");
+
+translate(locale.language, "add_stop","Haltestelle hinzufügen","Add stop/station");
+translate(locale.language, "search_stops","Haltestelle suchen","Search stops/stations");
+
+translate(locale.language, "favourite_stops","Favorisierte Haltestellen","Favourite stops/stations");
+translate(locale.language, "first_favourite_stop","Erste Haltestelle","First stop/station");
+translate(locale.language, "second_favourite_stop","Zweite Haltestelle","Second stop/station");
+
+translate(locale.language, "favourite_stops_description","Lege hier fest, welche Haltestellen du unter Favoriten anzeigen möchtest.","Set here the stops/stations which you want to display in the favourite section.");
+
+settingsStorage.onchange = function(evt) {
+  if (evt.key === "searchStations"){
+    loadResults(evt.newValue);
+  }
+}
+
+function loadResults(value){
+  var autoValues = [];
+ 
+  var url = variables.getURLSearchStation(value);
+  console.log(url);
+  fetch(url).then(function (response) {
+      response.text()
+      .then(function(data) {
+        console.log("Data:"+data);
+        var data = JSON.parse(data);
+        for(var i=0;i<data["member"].length;i++){
+          if(data["member"][i]["station_code"]!=null){
+            autoValues.push({name: data["member"][i]["name"],value: data["member"][i]["station_code"]});
+          }
+        }
+        settingsStorage.setItem('resultStations', JSON.stringify(autoValues));
+      });
+  });
+}
+
+function translate(current_language, key, value_de, value_en){
+  switch(current_language){
+    case 'de_DE':
+    case 'de_de':
+    case 'de-de':
+    case 'de-DE':
+    case 'de-CH':
+    case 'de-AT':
+    case 'de-De':
+    case 'de_De':
+      settingsStorage.setItem("t_"+key, value_de);
+      break;
+    default:
+      console.log(current_language);
+      settingsStorage.setItem("t_"+key, value_en);
+      break;
+  }
 }
