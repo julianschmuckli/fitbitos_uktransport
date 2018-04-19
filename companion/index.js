@@ -193,11 +193,17 @@ function loadResults(value){
   var autoValues = [];
  
   var url = variables.getURLSearchStation(value);
-  console.log(url);
-  fetch(url).then(function (response) {
+  //console.log(url);
+  
+  const body = {
+      method: 'GET',
+  };
+  
+  fetch(url, body).then(function (response) {
+      //console.log(response.status);
       response.text()
       .then(function(data) {
-        console.log("Data:"+data);
+        //console.log("Data:"+data);
         var data = JSON.parse(data);
         for(var i=0;i<data["member"].length;i++){
           if(data["member"][i]["station_code"]!=null){

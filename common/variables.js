@@ -10,5 +10,5 @@ export function getURLStationDetails(id){
 }
 
 export function getURLSearchStation(value){
-  return "http://transportapi.com/v3/uk/places.json?query="+value+"&type=train_station&app_id="+app_id+"&app_key="+app_key;
+  return "https://transportapi.com/v3/uk/places.json?query="+value+"&type=train_station&app_id="+app_id+"&app_key="+app_key;
 }
